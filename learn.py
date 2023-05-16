@@ -98,7 +98,6 @@ def change_colors():
     is_user_turn = True
     user_colors.clear()  # Clear user's sequence
 
-# Create a function to check if the user has clicked on the correct sequence of colors
 def check(event):
     global score, is_game_running, user_colors, is_user_turn
     if is_user_turn:
@@ -112,14 +111,17 @@ def check(event):
         canvas.itemconfig(tags[0], fill=get_original_color(tags[0]))
         # Add the clicked color to the user's sequence
         user_colors.append(tags[0])
-        # Check if the user's sequence matches the current sequence
-        if user_colors == current_colors:
+        # Check if it's the first attempt and the user failed
+        if len(user_colors) == 1 and user_colors[0] != current_colors[0]:
+            end_game()  # End the game if the user failed on the first attempt
+        elif user_colors == current_colors:
             score += 1
             update_score()
             user_colors = []  # Reset the user's sequence
             window.after(1000, change_colors)
         elif len(user_colors) == len(current_colors):
             end_game()  # If the user's sequence length is equal to the current sequence length but not matching, end the game
+
 
 # Update the score label
 def update_score():
