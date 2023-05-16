@@ -1,11 +1,9 @@
-# Import tkinter, os, time, random
 import tkinter as tk
 import os
 import time
 import random
 
 scores_file = os.path.join(os.path.dirname(__file__), 'scores.txt')
-
 
 # Create a window
 window = tk.Tk()
@@ -48,11 +46,13 @@ label_score.pack()
 
 score = 0
 is_game_running = False
-current_color = ''  # Variable to store the color of the rectangle selected by the game
+is_user_turn = False
+current_colors = []  # Variable to store the sequence of colors selected by the game
+user_colors = []  # Variable to store the sequence of colors clicked by the user
 
 # Create a function to start the game
 def start():
-    global score, is_game_running
+    global score, is_game_running, is_user_turn
     # Check if the user has input his/her name
     if chatbox.get() == '':
         # update the label
@@ -62,48 +62,64 @@ def start():
         button.config(state=tk.DISABLED)
         score = 0
         update_score()
-        change_color()
+        is_user_turn = False  # Reset user turn
+        change_colors()
 
+# Create a function to get the original color of a rectangle
+def get_original_color(rect):
+    if rect == 'rect1':
+        return 'red'
+    elif rect == 'rect2':
+        return 'green'
+    elif rect == 'rect3':
+        return 'yellow'
+    elif rect == 'rect4':
+        return 'blue'
+    
 # Create function to choose a random rectangle and change its color for 1 second and then change back to its original color
-def change_color():
-    global current_color
+def change_colors():
+    global current_colors, is_user_turn
+    is_user_turn = False  # Disable user input during the color sequence
     # Choose a random rectangle
     rect = random.choice(['rect1', 'rect2', 'rect3', 'rect4'])
-    # Change the color of the rectangle
-    canvas.itemconfig(rect, fill='white')
-    # Update the current color
-    current_color = rect
-    # Wait for 1 second
-    window.after(1000, lambda: restore_color(rect))
-    # Create a function to restore the color of a rectangle
-def restore_color(rect):
-    # Change the color of the rectangle back to its original color (red, green, yellow, or blue)
-    if rect == 'rect1':
-        canvas.itemconfig(rect1, fill='red')
-    elif rect == 'rect2':
-        canvas.itemconfig(rect2, fill='green')
-    elif rect == 'rect3':
-        canvas.itemconfig(rect3, fill='yellow')
-    elif rect == 'rect4':
-        canvas.itemconfig(rect4, fill='blue')
-    # Enable user input
-    canvas.bind('<Button-1>', check)
+    # Add the chosen color to the sequence
+    current_colors.append(rect)
+    # Change the color of the rectangles in the sequence
+    for color in current_colors:
+        rect_id = canvas.find_withtag(color)[0]  # Get the ID of the rectangle
+        canvas.itemconfig(rect_id, fill='white')
+        window.update()
+        time.sleep(1)
+        canvas.itemconfig(rect_id, fill=get_original_color(color))
+        window.update()
+        time.sleep(0.5)
 
-# Create a function to check if the user has clicked on the correct rectangle
+    # Enable user input
+    is_user_turn = True
+    user_colors.clear()  # Clear user's sequence
+
+# Create a function to check if the user has clicked on the correct sequence of colors
 def check(event):
-    global score, is_game_running
-    # Disable user input
-    canvas.unbind('<Button-1>')
-    # Get the tags of the item that the user has clicked on
-    tags = canvas.gettags(tk.CURRENT)
-    # Check if the user has clicked on the correct rectangle
-    if tags[0] == current_color:
-        score += 1
-        update_score()
-        # Change the color of the rectangle back to its original color after a short delay
-        window.after(500, change_color)
-    else:
-        end_game()
+    global score, is_game_running, user_colors, is_user_turn
+    if is_user_turn:
+        # Get the tags of the item that the user has clicked on
+        tags = canvas.gettags(tk.CURRENT)
+        # Change the color of the rectangle temporarily
+        rect_id = canvas.find_withtag(tags[0])[0]  # Get the ID of the rectangle
+        canvas.itemconfig(rect_id, fill='white')
+        window.update()
+        time.sleep(0.2)
+        canvas.itemconfig(tags[0], fill=get_original_color(tags[0]))
+        # Add the clicked color to the user's sequence
+        user_colors.append(tags[0])
+        # Check if the user's sequence matches the current sequence
+        if user_colors == current_colors:
+            score += 1
+            update_score()
+            user_colors = []  # Reset the user's sequence
+            window.after(1000, change_colors)
+        elif len(user_colors) == len(current_colors):
+            end_game()  # If the user's sequence length is equal to the current sequence length but not matching, end the game
 
 # Update the score label
 def update_score():
@@ -133,6 +149,7 @@ def save_score(score, name):
     with open(scores_file, 'w') as file:
         for score, name in existing_scores:
             file.write(f'{score},{name}\n')
+
 def load_scores():
     scores = []
     if os.path.isfile(scores_file):
@@ -142,7 +159,7 @@ def load_scores():
                 if line:
                     score, name = line.split(',')
                     scores.append((int(score), name))
-        scores.sort(reverse=True)  # Tri des scores par ordre décroissant
+        scores.sort(reverse=True)  # Sort scores in descending order
     return scores
 
 def show_scores():
@@ -164,7 +181,11 @@ chatbox.bind('<Return>', lambda event: start())
 # Bind the button to the function
 button.config(command=start)
 
-
+# Bind the rectangles to the check function
+canvas.tag_bind('rect1', '<Button-1>', check)
+canvas.tag_bind('rect2', '<Button-1>', check)
+canvas.tag_bind('rect3', '<Button-1>', check)
+canvas.tag_bind('rect4', '<Button-1>', check)
 
 # When the program is running, the window will not be closed
 window.mainloop()
