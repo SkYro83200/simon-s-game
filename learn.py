@@ -5,6 +5,20 @@ import random
 
 scores_file = os.path.join(os.path.dirname(__file__), 'scores.txt')
 
+# Define the original and darker colors
+original_colors = {
+    'rect1': 'red',
+    'rect2': 'green',
+    'rect3': 'yellow',
+    'rect4': 'blue'
+}
+darker_colors = {
+    'rect1': '#800000',  # Dark red
+    'rect2': '#004d00',  # Dark green
+    'rect3': '#808000',  # Dark yellow
+    'rect4': '#000080'   # Dark blue
+}
+
 # Create a window
 window = tk.Tk()
 window.title('Simon Says')
@@ -26,13 +40,13 @@ canvas.pack(side='left')
 button = tk.Button(frame, text='Start', font=('Arial', 12), width=10, height=2)
 button.pack(side='right')
 
-# draw 4 rectangles with different colors on the canvas, takes all the space of the canvas and attribute id to each rectangle
-rect1 = canvas.create_rectangle(0, 0, 150, 100, fill='red', tags='rect1')
-rect2 = canvas.create_rectangle(150, 0, 300, 100, fill='green', tags='rect2')
-rect3 = canvas.create_rectangle(0, 100, 150, 200, fill='yellow', tags='rect3')
-rect4 = canvas.create_rectangle(150, 100, 300, 200, fill='blue', tags='rect4')
+# Draw 4 rectangles with different colors on the canvas, taking all the space of the canvas and assigning an ID to each rectangle
+rect1 = canvas.create_rectangle(0, 0, 150, 100, fill=original_colors['rect1'], tags='rect1')
+rect2 = canvas.create_rectangle(150, 0, 300, 100, fill=original_colors['rect2'], tags='rect2')
+rect3 = canvas.create_rectangle(0, 100, 150, 200, fill=original_colors['rect3'], tags='rect3')
+rect4 = canvas.create_rectangle(150, 100, 300, 200, fill=original_colors['rect4'], tags='rect4')
 
-# Create chatbox for user to input his/her name
+# Create chatbox for the user to input his/her name
 chatbox = tk.Entry(window, show=None, font=('Arial', 14), width=20)
 chatbox.pack()
 
@@ -53,30 +67,55 @@ user_colors = []  # Variable to store the sequence of colors clicked by the user
 # Create a function to start the game
 def start():
     global score, is_game_running, is_user_turn
-    # Check if the user has input his/her name
-    if chatbox.get() == '':
-        # update the label
-        label1.config(text='Please enter your name')
+    username = chatbox.get().strip()  # Get the user's input and remove leading/trailing whitespace
+
+    # Check if the user has input a valid name
+    if len(username) < 3:
+        # Update the label
+        label1.config(text='Name should have at least 3 characters')
+    elif len(username) > 7:
+        # Update the label
+        label1.config(text='Name should have at most 7 characters')
+    elif any(symbol in username for symbol in "!@#$%^&*()_+={}[]|\:;'<>?,./\""):
+        label1.config(text='Name should not contain symbols')
+    elif any(word in username.lower() for word in ["violent_word1", "violent_word2", "violent_word3"]):
+        # Update the label
+        label1.config(text='Name should not contain violent words')
     elif not is_game_running:
         is_game_running = True
         button.config(state=tk.DISABLED)
         score = 0
         update_score()
         is_user_turn = False  # Reset user turn
-        change_colors()
+        animate_colors()  # Call the animation function
 
-# Create a function to get the original color of a rectangle
+# Function to animate the colors at the beginning of the game
+def animate_colors():
+    global is_user_turn
+    is_user_turn = False  # Disable user input during the color sequence
+
+    # Animate the colors
+    for rect_color in darker_colors:
+        rect_id = canvas.find_withtag(rect_color)[0]  # Get the ID of the rectangle
+        canvas.itemconfig(rect_id, fill=darker_colors[rect_color])
+        window.update()
+        time.sleep(0.5)
+        canvas.itemconfig(rect_id, fill=original_colors[rect_color])
+        window.update()
+        time.sleep(0.2)
+
+    is_user_turn = True  # Enable user input after the animation
+    user_colors.clear()  # Clear user's sequence
+    change_colors()  # Start the game after the animation
+
+    # Enable user input
+    is_user_turn = True
+    user_colors.clear()  # Clear user's sequence
+
 def get_original_color(rect):
-    if rect == 'rect1':
-        return 'red'
-    elif rect == 'rect2':
-        return 'green'
-    elif rect == 'rect3':
-        return 'yellow'
-    elif rect == 'rect4':
-        return 'blue'
-    
-# Create function to choose a random rectangle and change its color for 1 second and then change back to its original color
+    return original_colors.get(rect, 'white')
+
+# Create a function to choose a random rectangle and change its color for 1 second and then change back to its original color
 def change_colors():
     global current_colors, is_user_turn
     is_user_turn = False  # Disable user input during the color sequence
@@ -87,10 +126,10 @@ def change_colors():
     # Change the color of the rectangles in the sequence
     for color in current_colors:
         rect_id = canvas.find_withtag(color)[0]  # Get the ID of the rectangle
-        canvas.itemconfig(rect_id, fill='white')
+        canvas.itemconfig(rect_id, fill=darker_colors[color])
         window.update()
         time.sleep(1)
-        canvas.itemconfig(rect_id, fill=get_original_color(color))
+        canvas.itemconfig(rect_id, fill=original_colors[color])
         window.update()
         time.sleep(0.5)
 
@@ -105,7 +144,7 @@ def check(event):
         tags = canvas.gettags(tk.CURRENT)
         # Change the color of the rectangle temporarily
         rect_id = canvas.find_withtag(tags[0])[0]  # Get the ID of the rectangle
-        canvas.itemconfig(rect_id, fill='white')
+        canvas.itemconfig(rect_id, fill=darker_colors[tags[0]])
         window.update()
         time.sleep(0.2)
         canvas.itemconfig(tags[0], fill=get_original_color(tags[0]))
